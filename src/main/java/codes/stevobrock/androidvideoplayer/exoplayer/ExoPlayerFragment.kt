@@ -1,4 +1,4 @@
-package codes.stevobrock.androidvideoplayer.simpleexoplayer
+package codes.stevobrock.androidvideoplayer.exoplayer
 
 import android.content.Context
 import android.os.Bundle
@@ -7,64 +7,61 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import androidx.fragment.app.Fragment
-import codes.stevobrock.androidvideoplayer.model.Video
+import codes.stevobrock.androidvideoplayer.model.MediaPlayable
 import com.google.android.exoplayer2.SimpleExoPlayer
+import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.source.dash.DashMediaSource
 import com.google.android.exoplayer2.source.hls.HlsMediaSource
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
+import java.lang.Exception
 
 //----------------------------------------------------------------------------------------------------------------------
-class SimpleExoPlayerFragment : Fragment() {
+class ExoPlayerFragment : Fragment() {
 
 	// Interfaces
 	//------------------------------------------------------------------------------------------------------------------
-	interface SimpleExoPlayerFragmentListener {
-		fun onQueryVideo() :Video
+	interface ExoPlayerFragmentListener {
+		// Core methods
+		fun onQueryMediaPlayable() :MediaPlayable
+
+		// Playback methods
+		fun onQueryMediaSource(context :Context, mediaPlayable :MediaPlayable) :MediaSource
+				{ return defaultMediaSource(context, mediaPlayable) }
+
+		// UI methods
 		fun onQueryLayoutResourceID() :Int
 		fun onQueryPlayerParentViewGroupResourceID() :Int
 	}
 
 	// Properties
-	private 			var listener :SimpleExoPlayerFragmentListener? = null
+	private 			var listener :ExoPlayerFragmentListener? = null
 
-	private	lateinit	var	video :Video
+	private	lateinit	var	mediaPlayable :MediaPlayable
 	private	lateinit	var	simpleExoPlayer :SimpleExoPlayer
 
 	// Lifecycle methods
 	//------------------------------------------------------------------------------------------------------------------
-	override fun onCreate(savedInstanceState : Bundle?) {
+	override fun onCreate(savedInstanceState :Bundle?) {
 		// Do super
 		super.onCreate(savedInstanceState)
 
 		// Setup properties
-		this.video = this.listener!!.onQueryVideo()
+		this.mediaPlayable = this.listener!!.onQueryMediaPlayable()
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
-	override fun onCreateView(inflater : LayoutInflater, container : ViewGroup?, savedInstanceState : Bundle?) : View? {
+	override fun onCreateView(inflater :LayoutInflater, container :ViewGroup?, savedInstanceState :Bundle?) :View {
 		// Setup view
 		val view = inflater.inflate(this.listener!!.onQueryLayoutResourceID(), container, false)
 
 		// Setup player
 		val context = this.listener as Context
 
-		val	dataSourceFactory =
-					DefaultDataSourceFactory(context, Util.getUserAgent(context, "Media Player"))
-
 		this.simpleExoPlayer = SimpleExoPlayer.Builder(context).build()
-		if (this.video.uri.path!!.endsWith("mpd"))
-			// Dash
-			this.simpleExoPlayer.prepare(DashMediaSource.Factory(dataSourceFactory).createMediaSource(this.video.uri))
-		else if (this.video.uri.path!!.endsWith("m3u8"))
-			// HLS
-			this.simpleExoPlayer.prepare(HlsMediaSource.Factory(dataSourceFactory).createMediaSource(this.video.uri))
-		else if (this.video.uri.path!!.endsWith("mp4"))
-			// MP4
-			this.simpleExoPlayer.prepare(
-					ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(this.video.uri))
+		this.simpleExoPlayer.prepare(this.listener!!.onQueryMediaSource(context, this.mediaPlayable))
 		this.simpleExoPlayer.playWhenReady = true
 
 		val	playerView = PlayerView(context)
@@ -82,12 +79,12 @@ class SimpleExoPlayerFragment : Fragment() {
 		super.onAttach(context)
 
 		// Check context
-		if (context is SimpleExoPlayerFragmentListener) {
+		if (context is ExoPlayerFragmentListener) {
 			// Store
 			listener = context
 		} else {
 			// Error
-			throw RuntimeException("$context must implement SimpleExoPlayerFragmentListener")
+			throw RuntimeException("$context must implement ExoPlayerFragmentListener")
 		}
 	}
 
@@ -99,5 +96,34 @@ class SimpleExoPlayerFragment : Fragment() {
 		// Reset
 		this.simpleExoPlayer.stop()
 		listener = null
+	}
+
+	// Companion object
+	//------------------------------------------------------------------------------------------------------------------
+	companion object {
+
+		// Exceptions
+		class UnknownVideoTypeException : Exception()
+
+		// Methods
+		fun defaultMediaSource(context :Context, mediaPlayable :MediaPlayable) :MediaSource {
+			// Setup
+			val	dataSourceFactory =
+						DefaultDataSourceFactory(context, Util.getUserAgent(context,
+								"ExoPlayerFragment"))
+
+			return if (mediaPlayable.uri.path!!.endsWith("mpd"))
+				// Dash
+				DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaPlayable.uri)
+			else if (mediaPlayable.uri.path!!.endsWith("m3u8"))
+				// HLS
+				HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaPlayable.uri)
+			else if (mediaPlayable.uri.path!!.endsWith("mp4"))
+				// MP4
+				ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(mediaPlayable.uri)
+			else
+				// Huh?
+				throw UnknownVideoTypeException()
+		}
 	}
 }
