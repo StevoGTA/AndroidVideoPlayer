@@ -40,6 +40,15 @@ class GoogleCastExpandedControllerActivity : ExpandedControllerActivity() {
 		return true
 	}
 
+	//------------------------------------------------------------------------------------------------------------------
+	override fun onStop() {
+		// Do super
+		super.onStop()
+
+		// Stop
+		GoogleCastManager.stop(CastContext.getSharedInstance(this)!!)
+	}
+
 	// Instantiation object
 	//------------------------------------------------------------------------------------------------------------------
 	companion object {
@@ -51,7 +60,7 @@ class GoogleCastExpandedControllerActivity : ExpandedControllerActivity() {
 		// Methods
 		//--------------------------------------------------------------------------------------------------------------
 		@JvmStatic
-		fun start(context :Context, googleCastItem : GoogleCastItem) {
+		fun start(context :Context, googleCastItem :GoogleCastItem) {
 			// Setup intent
 			val	intent = Intent(context, GoogleCastExpandedControllerActivity::class.java).apply {
 				// Setup
