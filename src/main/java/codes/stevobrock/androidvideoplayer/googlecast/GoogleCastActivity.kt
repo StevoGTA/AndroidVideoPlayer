@@ -44,5 +44,11 @@ open class GoogleCastActivity : AppCompatActivity() {
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
-	fun hasCurrentCastSession() :Boolean { return this.castContext!!.sessionManager.currentSession != null }
+	fun hasCurrentCastSession() :Boolean { return this.castContext!!.sessionManager.currentCastSession != null }
+
+	//------------------------------------------------------------------------------------------------------------------
+	fun currentCastSessionDeviceName() :String? {
+		// Return device friendly name
+		return this.castContext?.sessionManager?.currentCastSession?.castDevice?.friendlyName
+	}
 }
